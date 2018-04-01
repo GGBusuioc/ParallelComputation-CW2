@@ -125,46 +125,64 @@ int main( int argc, char **argv )
 
 
 	int
-		*sendData = (int*) malloc( sizeof(int)*pixelsPerProc ),
 		*recvData = (int*) malloc( sizeof(int)*pixelsPerProc );
 
 	// Fill the sendData array with some numbers; for the purpose of this exercise it doesn't matter what,
 	// although it helps debugging if each rank's array contains different values.
 
-	for( i=0; i<pixelsPerProc; i++ ) sendData[i] = &image[i];
+	// MPI_Status status;
+	// if( rank % 2 )
+	// {
+	// 	printf("here is rank %d with size=%d\n" , rank , pixelsPerProc);
+	//
+	// 	MPI_Send( sendData, pixelsPerProc, MPI_INT, ( rank==numProcs-1 ? 0 : rank+1 ), 0, MPI_COMM_WORLD );
+	// 	MPI_Recv( recvData, pixelsPerProc, MPI_INT, ( rank==0 ? numProcs-1 : rank-1 ), 0, MPI_COMM_WORLD, &status );
+	//
+	// }
+	// else
+	// {
+	// 	printf("here is rank %d with size=%d\n" , rank , pixelsPerProc);
+	//
+	// 	MPI_Recv( recvData, pixelsPerProc, MPI_INT, ( rank==0 ? numProcs-1 : rank-1 ), 0, MPI_COMM_WORLD, &status );
+	// 	MPI_Send( sendData, pixelsPerProc, MPI_INT, ( rank==numProcs-1 ? 0 : rank+1 ), 0, MPI_COMM_WORLD );
+	//
+	// }
+	//
+	// if( rank==0 )
+	// 	for( i=0; i<(pixelsPerProc<20?pixelsPerProc:20); i++ ) printf( "%i\t%i\t%i\n", i, sendData[i],recvData[i] );
+	//
+	//
 
+	MPI_Scatter(
+		image, pixelsPerProc, MPI_INT, // Sent from
+		recvData, pixelsPerProc, MPI_INT, // Received to
+		0, MPI_COMM_WORLD 						// Source rank 0
+	);
 
-
-
-	MPI_Status status;
-	if( rank % 2 )
-	{
-		printf("here is rank %d with size=%d\n" , rank , pixelsPerProc);
-
-		MPI_Send( sendData, pixelsPerProc, MPI_INT, ( rank==numProcs-1 ? 0 : rank+1 ), 0, MPI_COMM_WORLD );
-		MPI_Recv( recvData, pixelsPerProc, MPI_INT, ( rank==0 ? numProcs-1 : rank-1 ), 0, MPI_COMM_WORLD, &status );
-
-	}
-	else
-	{
-		printf("here is rank %d with size=%d\n" , rank , pixelsPerProc);
-
-		MPI_Recv( recvData, pixelsPerProc, MPI_INT, ( rank==0 ? numProcs-1 : rank-1 ), 0, MPI_COMM_WORLD, &status );
-		MPI_Send( sendData, pixelsPerProc, MPI_INT, ( rank==numProcs-1 ? 0 : rank+1 ), 0, MPI_COMM_WORLD );
-
-	}
-
+	// Check if data is sent and received corectly
 	if( rank==0 )
-		for( i=0; i<(pixelsPerProc<20?pixelsPerProc:20); i++ ) printf( "%i\t%i\n", i, recvData[i] );
-
-
-
+		for( i=0; i<(pixelsPerProc<100?pixelsPerProc:100); i++ ) printf( "%i\t%i\t%i\n", i, image[i],recvData[i] );
 
 
 	// Step 3
+	int *count_a = NULL;
+	count_a = (int*) malloc( (maxValue+1)*sizeof(int) );
+	// for( i=0; i<maxValue+1; i++ ) count_a[i] = 0;
+	//
+	// //
+	// for(i=0;i<pixelsPerProc;i++)
+	// 	count_a[recvData[i]] += 1;
 
 
-	//MPI_Reduce(&combinedHist[i], &count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+	// printf(" FOR 231 index %d value %d ", 231, count_a[231]);
+	// printf(" FOR 10 index %d value %d ", 10, count_a[10]);
+	// printf(" FOR 48 index %d value %d ", 48, count_a[48]);
+	// printf(" FOR 123 index %d value %d ", 123, count_a[123]);
+
+
+
+	//int a=0;
+	//MPI_Reduce(&count_a, a, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	//
 	//Step 4. Send all of the local counts back to rank 0, which calculates the total.
@@ -189,17 +207,12 @@ int main( int argc, char **argv )
 	// 	MPI_Send( &count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD );
 	// }
 
-	// int count = 5;
-	// int *partials=NULL;
-	// if ( rank == 0)
-	// {
-	// 	partials = (int*) malloc( pixelsPerProc*sizeof(numProcs) );
-	// }
-	// MPI_Gather(
-	// 	&count, 1, MPI_INT,
-	// 	combinedHist, 1, MPI_INT,
-	// 	0, MPI_COMM_WORLD
-	// );
+
+	MPI_Gather(
+		count_a, 1, MPI_INT,
+		combinedHist, 1, MPI_INT,
+		0, MPI_COMM_WORLD
+	);
 
 
 
