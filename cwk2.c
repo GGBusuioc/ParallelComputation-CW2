@@ -41,6 +41,7 @@ int main( int argc, char **argv )
 		// Read in the file and extract the maximum grey scale value and the data size (including padding bytes).
 		// Defined in cwk2_extras.h; do not change, although feel free to inspect.
 		image = readImage( "image.pgm", &maxValue, &dataSize, numProcs );
+
 		if( image==NULL )
 		{
 			MPI_Finalize();
@@ -63,86 +64,107 @@ int main( int argc, char **argv )
  		for( i=0; i<maxValue+1; i++ ) combinedHist[i] = 0;
  	}
 
-
-
 	//
 	// Your parallel code goes here. Feel free to change anything else in this file,
 	// EXCEPT calls to the routines in cwk2_extras.h which MUST be called as provided.
 	//
 
-
 	//
 	// Step 1
-	//
-	// int p;
-	// if( rank==0 )
-	// {
-	// 	for( p=1; p<numProcs; p++ )
-	// 	{
-	// 		MPI_Send( &pixelsPerProc, 1, MPI_INT, p, 0, MPI_COMM_WORLD );
-	// 	}
-	// }
-	// else
-	// {
-	// 	MPI_Recv( &pixelsPerProc, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
-	// }
+	// I belive both versions work
 
-	MPI_Bcast(&pixelsPerProc, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	int p;
+	if( rank==0 )
+	{
+		for( p=1; p<numProcs; p++ )
+		{
+			MPI_Send( &pixelsPerProc, 1, MPI_INT, p, 0, MPI_COMM_WORLD );
+		}
+	}
+	else
+	{
+		MPI_Recv( &pixelsPerProc, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+	}
+
+	//MPI_Bcast(&pixelsPerProc, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
 
 	//
 	// Step 2. Distribute the global array to the local arrays on all processes.
 	//
-
-	// int p;
+	// printf("Here is where it points %d !!!!!!!!!!£££", *image);
 	// if( rank==0 )
 	// {
-	// 	// Copy first segment to own localData (nb. never 'send' to self!)
-	// 	for( i=0; i<pixelsPerProc; i++ ) combinedHist[i] = image[i];
-	//
-	// 	// Send the remaining segments.
 	// 	for( p=1; p<numProcs; p++ )
+	// 	{
 	// 		MPI_Send( &image[p*pixelsPerProc], pixelsPerProc, MPI_INT, p, 0, MPI_COMM_WORLD );
+	// 	}
 	// }
 	// else
 	// {
 	// 	MPI_Recv( combinedHist, pixelsPerProc, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
 	// }
 
+	// if( rank==0 )
+	// {
+	// 	for (p=1; p<numProcs; p++)
+	// 		MPI_Send( &image[p*pixelsPerProc], pixelsPerProc, MPI_INT, p, 0, MPI_COMM_WORLD);
+	// }
+	// MPI_Status status;
+	// if( rank > 0)
+	// {
+	// 	MPI_Recv(combinedHist, pixelsPerProc, MPI_INT, 0, 0, MPI_COMM_WORLD, &status);
+	// }
 	// MPI_Scatter(
-	// 	image, pixelsPerProc, MPI_INT,
+	// 	&image[p*pixelsPerProc], pixelsPerProc, MPI_INT,
 	// 	combinedHist, pixelsPerProc, MPI_INT,
 	// 	0, MPI_COMM_WORLD
 	// );
 
-
 	// Using staggered sends and receives
 
+
 	int
-		*sendData = (int*) malloc( sizeof(int)*dataSize),
-		*recvData = (int*) malloc( sizeof(int)*dataSize);
+		*sendData = (int*) malloc( sizeof(int)*pixelsPerProc ),
+		*recvData = (int*) malloc( sizeof(int)*pixelsPerProc );
+
+	// Fill the sendData array with some numbers; for the purpose of this exercise it doesn't matter what,
+	// although it helps debugging if each rank's array contains different values.
+
+	for( i=0; i<pixelsPerProc; i++ ) sendData[i] = &image[i];
+
+
 
 
 	MPI_Status status;
 	if( rank % 2 )
 	{
-		MPI_Send( sendData, dataSize, MPI_INT, ( rank==numProcs-1 ? 0 : rank+1 ), 0, MPI_COMM_WORLD );
-		MPI_Recv( recvData, dataSize, MPI_INT, ( rank==0 ? numProcs-1 : rank-1 ), 0, MPI_COMM_WORLD, &status );
+		printf("here is rank %d with size=%d\n" , rank , pixelsPerProc);
+
+		MPI_Send( sendData, pixelsPerProc, MPI_INT, ( rank==numProcs-1 ? 0 : rank+1 ), 0, MPI_COMM_WORLD );
+		MPI_Recv( recvData, pixelsPerProc, MPI_INT, ( rank==0 ? numProcs-1 : rank-1 ), 0, MPI_COMM_WORLD, &status );
+
 	}
 	else
 	{
-		MPI_Recv( recvData, dataSize, MPI_INT, ( rank==0 ? numProcs-1 : rank-1 ), 0, MPI_COMM_WORLD, &status );
-		MPI_Send( sendData, dataSize, MPI_INT, ( rank==numProcs-1 ? 0 : rank+1 ), 0, MPI_COMM_WORLD );
+		printf("here is rank %d with size=%d\n" , rank , pixelsPerProc);
+
+		MPI_Recv( recvData, pixelsPerProc, MPI_INT, ( rank==0 ? numProcs-1 : rank-1 ), 0, MPI_COMM_WORLD, &status );
+		MPI_Send( sendData, pixelsPerProc, MPI_INT, ( rank==numProcs-1 ? 0 : rank+1 ), 0, MPI_COMM_WORLD );
+
 	}
 
+	if( rank==0 )
+		for( i=0; i<(pixelsPerProc<20?pixelsPerProc:20); i++ ) printf( "%i\t%i\n", i, recvData[i] );
 
 
-	 // int count = 0;
-	// for( i=0; i<pixelsPerProc; i++ )
-	// if( combinedHist[i] < 10 ) count++;
 
 
-// 	MPI_Reduce(&combinedHist[i], &count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+	// Step 3
+
+
+	//MPI_Reduce(&combinedHist[i], &count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
 	//
 	//Step 4. Send all of the local counts back to rank 0, which calculates the total.
@@ -167,17 +189,18 @@ int main( int argc, char **argv )
 	// 	MPI_Send( &count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD );
 	// }
 
-
-	// float *partials=NULL;
+	// int count = 5;
+	// int *partials=NULL;
 	// if ( rank == 0)
 	// {
-	// 	partials = (float*) malloc( dataSize*sizeof(numProcs) );
+	// 	partials = (int*) malloc( pixelsPerProc*sizeof(numProcs) );
 	// }
 	// MPI_Gather(
 	// 	&count, 1, MPI_INT,
-	// 	partials, 1, MPI_INT,
+	// 	combinedHist, 1, MPI_INT,
 	// 	0, MPI_COMM_WORLD
 	// );
+
 
 
 
