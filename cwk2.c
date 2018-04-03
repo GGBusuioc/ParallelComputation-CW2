@@ -100,8 +100,8 @@ int main( int argc, char **argv )
 
 	// Uncomment to see the computation performed on all 4 processes
 	//
-	for( i=0; i<maxValue+1; i++ )
-		printf("Rank %d - Index %d : %d\n",rank, i, array[i]);
+	// for( i=0; i<maxValue+1; i++ )
+	// 	printf("Rank %d - Index %d : %d\n",rank, i, array[i]);
 
 
 	// int ceva[maxValue];
@@ -109,7 +109,9 @@ int main( int argc, char **argv )
 
 	//Step 4. Send all of the local counts back to rank 0, which calculates the total.
 
-	MPI_Reduce (&array, combinedHist ,1 , MPI_INT , MPI_SUM ,0 ,	MPI_COMM_WORLD ) ;
+	MPI_Reduce (array, combinedHist ,maxValue+1 , MPI_INT , MPI_SUM ,0 ,	MPI_COMM_WORLD ) ;
+	free( recvData );
+	free(array);
 
 
 	//
