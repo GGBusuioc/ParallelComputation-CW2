@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
+#include <math.h>
+
 
 // Some extra routines for this coursework. DO NOT MODIFY OR REPLACE THESE ROUTINES,
 // as this file will be replaced with a different version for assessment.
@@ -109,7 +111,48 @@ int main( int argc, char **argv )
 
 	//Step 4. Send all of the local counts back to rank 0, which calculates the total.
 
-	MPI_Reduce (array, combinedHist ,maxValue+1 , MPI_INT , MPI_SUM ,0 ,	MPI_COMM_WORLD ) ;
+	//MPI_Reduce (array, combinedHist ,maxValue+1 , MPI_INT , MPI_SUM ,0 ,	MPI_COMM_WORLD ) ;
+	MPI_Status status;
+	// if (rank%2)
+	// {
+	// 	MPI_Send(array,maxValue+1, MPI_INT, rank-1, 0, MPI_COMM_WORLD);
+	// }
+	// else
+	// {
+	// 	MPI_Recv(array, maxValue+1, MPI_INT, rank-1, 0, MPI_COMM_WORLD, &status);
+	// }
+
+	int lev = 1;
+	while(1<<lev<=numProcs)
+		{
+			if(lev==1)
+			{
+				if(rank%2==0)
+				{
+				printf("Level %d Rank %d. Receive from rank %d\n", lev, rank, rank+1);
+				}
+				else
+				{
+				printf("Level %d Rank %d. Send to rank %d\n", lev, rank, rank-1);
+				}
+			}
+			// else {}
+
+
+			lev++;
+		}
+
+	// if (rank%2==0)
+	// {
+	// 	printf("Rank %d. Receive from rank %d\n", rank, rank+1);
+	// 	//MPI_Recv(array, maxValue+1, MPI_INT, rank, 0, MPI_COMM_WORLD, &status);
+	//
+	// }
+	// else{
+	// 	printf("Rank %d. Send to rank %d\n", rank, rank-1);
+	// 	//MPI_Send(array,maxValue+1, MPI_INT, rank-1, 0, MPI_COMM_WORLD);
+	// }
+
 	free( recvData );
 	free(array);
 
@@ -119,8 +162,6 @@ int main( int argc, char **argv )
 	//
 	if( rank==0 )
 	{
-
-
 		// for( i=0; i<maxValue+1; i++ )
 		// 	printf("index %d: %d\n", i, ceva[i]);
 
@@ -134,8 +175,8 @@ int main( int argc, char **argv )
 			if( image[i]>=0 ) checkHist[image[i]]++;
 
 		// Display the histgram.
-		for( i=0; i<maxValue+1; i++ )
-			printf( "Greyscale value %i:\tCount %i\t(check: %i)\n", i, combinedHist[i], checkHist[i] );
+		// for( i=0; i<maxValue+1; i++ )
+		// 	printf( "Greyscale value %i:\tCount %i\t(check: %i)\n", i, combinedHist[i], checkHist[i] );
 		free( checkHist );
 	}
 
@@ -148,8 +189,6 @@ int main( int argc, char **argv )
 		saveHist( combinedHist, maxValue );		// Defined in cwk2_extras.h; do not change or replace the call.
 		free( image );
 		free( combinedHist );
-
-
 	}
 
 	MPI_Finalize();
