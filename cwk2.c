@@ -74,40 +74,20 @@ int main( int argc, char **argv )
 	// Step 1
 	// I belive both versions work
 
-	// int p;
-	// if( rank==0 )
-	// {
-	// 	for( p=1; p<numProcs; p++ )
-	// 	{
-	// 		MPI_Send( &pixelsPerProc, 1, MPI_INT, p, 0, MPI_COMM_WORLD );
-	// 	}
-	// }
-	// else
-	// {
-	// 	MPI_Recv( &pixelsPerProc, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE );
-	// }
-
 	MPI_Bcast(&pixelsPerProc, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Bcast(&maxValue, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-
 
 	//
 	// Step 2. Distribute the global array to the local arrays on all processes.
 	//
 
-
 	int *recvData = (int*) malloc( sizeof(int)*pixelsPerProc );
-
-
 
 	MPI_Scatter(
 		image, pixelsPerProc, MPI_INT, // Sent from
 		recvData, pixelsPerProc, MPI_INT, // Received to
 		0, MPI_COMM_WORLD 						// Source rank 0
 	);
-
-
 
 	int *array = (int*) malloc( (maxValue+1)*sizeof(int) );
 
