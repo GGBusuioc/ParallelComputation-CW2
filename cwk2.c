@@ -109,13 +109,6 @@ int main( int argc, char **argv )
 
 
 
-	// int *array = (int*) malloc( (maxValue+1)*sizeof(int) );
-	//
-	// if( !array ) return allocateFail( "local array", rank );
-	//
-	// for( i=0; i<maxValue+1; i++ ) array[i] = 0;
-	//printf("Max value is %d", maxValue);
-	//int array[maxValue];
 	int *array = (int*) malloc( (maxValue+1)*sizeof(int) );
 
 	for( i=0; i<maxValue+1; i++ ) array[i] = 0;
