@@ -88,6 +88,8 @@ int main( int argc, char **argv )
 	// }
 
 	MPI_Bcast(&pixelsPerProc, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&maxValue, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
 
 
 	//
@@ -95,8 +97,8 @@ int main( int argc, char **argv )
 	//
 
 
-	int
-		*recvData = (int*) malloc( sizeof(int)*pixelsPerProc );
+	int *recvData = (int*) malloc( sizeof(int)*pixelsPerProc );
+
 
 
 	MPI_Scatter(
@@ -105,50 +107,36 @@ int main( int argc, char **argv )
 		0, MPI_COMM_WORLD 						// Source rank 0
 	);
 
-	// Check if data is sent and received corectly
-	if( rank==0 )
-		for( i=0; i<(pixelsPerProc<255?pixelsPerProc:255); i++ ) printf( "%i\t%i\t%i\n", i, image[i],recvData[i] );
 
 
-	// Step 3
+	// int *array = (int*) malloc( (maxValue+1)*sizeof(int) );
+	//
+	// if( !array ) return allocateFail( "local array", rank );
+	//
+	// for( i=0; i<maxValue+1; i++ ) array[i] = 0;
+	//printf("Max value is %d", maxValue);
+	//int array[maxValue];
+	int *array = (int*) malloc( (maxValue+1)*sizeof(int) );
 
-	int array[255];
-	int tot[255];
+	for( i=0; i<maxValue+1; i++ ) array[i] = 0;
 
-	for( i=0; i<256; i++ )
-			array[i] = 0;
-
-	for( i=0; i<256; i++ )
-			tot[i] = 0;
 
 
 	for( i=0; i<pixelsPerProc; i++ )
 		array[recvData[i]] = array[recvData[i]] + 1;
 
-		for( i=0; i<256; i++ )
-			{printf("index %d: %d \n", i, array[i]);
-			tot[i] = tot[i] + array[i];
-			printf("when array[i]: %d - tot[i]: %d\n", array[i], tot[i]);
-		}
-
-
-
+	// Uncomment to see the computation performed on all 4 processes
 	//
-	MPI_Reduce (&combinedHist, &array ,1 , MPI_INT , MPI_SUM ,0 ,	MPI_COMM_WORLD ) ;
-	// // if(rank>=0) {
-	// // 	for(i=0;i<255;i++)
-	// // 	printf(" combinedHist rank %d, index %d = %d \n", rank, i,combinedHist[i]);
-	// // }
-	//
-	MPI_Gather(
-		&array, 1, MPI_INT,
-		combinedHist, 1, MPI_INT,
-		0, MPI_COMM_WORLD
-	);
+	for( i=0; i<maxValue+1; i++ )
+		printf("Rank %d - Index %d : %d\n",rank, i, array[i]);
 
+
+	// int ceva[maxValue];
+	// for( i=0; i<maxValue+1; i++ ) ceva[i] = 0;
 
 	//Step 4. Send all of the local counts back to rank 0, which calculates the total.
 
+	MPI_Reduce (&array, combinedHist ,1 , MPI_INT , MPI_SUM ,0 ,	MPI_COMM_WORLD ) ;
 
 
 	//
@@ -156,6 +144,11 @@ int main( int argc, char **argv )
 	//
 	if( rank==0 )
 	{
+
+
+		// for( i=0; i<maxValue+1; i++ )
+		// 	printf("index %d: %d\n", i, ceva[i]);
+
 		// Allocate memory for the check histogram, and then initialise it to zero.
 		int *checkHist = (int*) malloc( (maxValue+1)*sizeof(int) );
 		if( !checkHist ) return allocateFail( "histogram for checking", rank );
@@ -168,10 +161,8 @@ int main( int argc, char **argv )
 		// Display the histgram.
 		for( i=0; i<maxValue+1; i++ )
 			printf( "Greyscale value %i:\tCount %i\t(check: %i)\n", i, combinedHist[i], checkHist[i] );
-
 		free( checkHist );
 	}
-
 
 	//
 	// Clear up and quit.
@@ -182,6 +173,8 @@ int main( int argc, char **argv )
 		saveHist( combinedHist, maxValue );		// Defined in cwk2_extras.h; do not change or replace the call.
 		free( image );
 		free( combinedHist );
+
+
 	}
 
 	MPI_Finalize();
