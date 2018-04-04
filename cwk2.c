@@ -1,12 +1,19 @@
 //
 // Starting code for the MPI coursework.
 //
+// When using collective communications routines version
 // Compile with:
 //
 // mpicc -Wall -o cwk1 cwk1.c
 //
 // or use the provided makefile.
 //
+// When using point-to-point communication in a binary tree
+// Compile with:
+//
+// mpicc -Wall -lm -o cwk1 cwk1.c
+//
+// And uncomment the specified code situated at the end of the program
 
 
 //
@@ -73,97 +80,121 @@ int main( int argc, char **argv )
 	//
 
 	//
-	// Step 1
-	// I belive both versions work
-
+	// Let all the process know about the value of pixelsPerProc and maxValue
+	//
 	MPI_Bcast(&pixelsPerProc, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Bcast(&maxValue, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
+
 	//
-	// Step 2. Distribute the global array to the local arrays on all processes.
+	// Distribute the global array to the local arrays on all processes.
 	//
 
 	int *recvData = (int*) malloc( sizeof(int)*pixelsPerProc );
-
 	MPI_Scatter(
 		image, pixelsPerProc, MPI_INT, // Sent from
 		recvData, pixelsPerProc, MPI_INT, // Received to
 		0, MPI_COMM_WORLD 						// Source rank 0
 	);
 
+	// Create a local array for each process
 	int *array = (int*) malloc( (maxValue+1)*sizeof(int) );
-
+	// Initialise the local array with zeroes
 	for( i=0; i<maxValue+1; i++ ) array[i] = 0;
 
-
-
+	// Perform the pixel counting on each array
 	for( i=0; i<pixelsPerProc; i++ )
 		array[recvData[i]] = array[recvData[i]] + 1;
 
-	// Uncomment to see the computation performed on all 4 processes
+
 	//
-	// for( i=0; i<maxValue+1; i++ )
-	// 	printf("Rank %d - Index %d : %d\n",rank, i, array[i]);
-
-
-	// int ceva[maxValue];
-	// for( i=0; i<maxValue+1; i++ ) ceva[i] = 0;
-
-	//Step 4. Send all of the local counts back to rank 0, which calculates the total.
-
-	//MPI_Reduce (array, combinedHist ,maxValue+1 , MPI_INT , MPI_SUM ,0 ,	MPI_COMM_WORLD ) ;
-	MPI_Status status;
-	// if (rank%2)
-	// {
-	// 	MPI_Send(array,maxValue+1, MPI_INT, rank-1, 0, MPI_COMM_WORLD);
-	// }
-	// else
-	// {
-	// 	MPI_Recv(array, maxValue+1, MPI_INT, rank-1, 0, MPI_COMM_WORLD, &status);
-	// }
-
-	int lev = 1;
-	while(1<<lev<=numProcs)
-		{
-			if(lev==1)
-			{
-				if(rank%2==0)
-				{
-				printf("Level %d Rank %d. Receive from rank %d\n", lev, rank, rank+1);
-				}
-				else
-				{
-				printf("Level %d Rank %d. Send to rank %d\n", lev, rank, rank-1);
-				}
-			}
-			// else {}
-
-
-			lev++;
-		}
-
-	// if (rank%2==0)
-	// {
-	// 	printf("Rank %d. Receive from rank %d\n", rank, rank+1);
-	// 	//MPI_Recv(array, maxValue+1, MPI_INT, rank, 0, MPI_COMM_WORLD, &status);
+	// Perform Reduction
 	//
-	// }
-	// else{
-	// 	printf("Rank %d. Send to rank %d\n", rank, rank-1);
-	// 	//MPI_Send(array,maxValue+1, MPI_INT, rank-1, 0, MPI_COMM_WORLD);
-	// }
+
+	MPI_Reduce (array, combinedHist ,maxValue+1 , MPI_INT , MPI_SUM ,0 ,	MPI_COMM_WORLD ) ;
+
+	//
+	// Reducing the local histograms to the global one using point-to-point communication in a binary tree (First example from the lecture)
+	//
+
+	// MPI_Status status;
+	//
+	// // Create a remote array to hold the received array when receiving
+	// int *remoteArray = (int*) malloc( (maxValue+1)*sizeof(int) );
+	//
+	// // Initialise remoteArray with zeroes
+	// for( i=0; i<maxValue+1; i++ ) remoteArray[i] = 0;
+	//
+  // // Initial level
+	// int lev = 1;
+	//
+	// int power_level, power_level_minus;
+	//
+	// // Compute  2 * (first level - 1)
+	// power_level_minus = pow(2,lev-1);
+	//
+	// // Compute  2 * (first level )
+	// power_level = pow(2,lev);
+	//
+	// // While level <= log(numProcs)
+	// while(1<<lev<=numProcs)
+	// 	{
+	// 		// If on the first level
+	// 		if(lev==1)
+	// 		{
+	// 			if(rank%2==0)
+	// 			{
+	// 			MPI_Recv(remoteArray, maxValue+1, MPI_INT, rank+1, 0, MPI_COMM_WORLD, &status);
+	// 			for(i=0;i<maxValue+1;i++)
+	// 				array[i] += remoteArray[i];
+	// 			}
+	// 			else
+	// 			{
+	// 			MPI_Send(array, maxValue+1, MPI_INT, rank-1, 0, MPI_COMM_WORLD);
+	// 			}
+	// 		}
+	// 		// Not on the first level and the logic for receiving and sending changes
+	// 		else
+	// 		{
+	// 			// If the current rank is a receiver
+	// 			if(rank%power_level==0)
+	// 			{
+	// 				MPI_Recv(remoteArray, maxValue+1, MPI_INT, rank+power_level_minus, 0, MPI_COMM_WORLD, &status);
+	// 				for(i=0;i<maxValue+1;i++)
+	// 					array[i] += remoteArray[i];
+	// 			}
+	// 			// It is not a receiver
+	// 			else
+	// 			{
+	// 				// Check if it a sender
+	// 				if(rank%power_level_minus==0)
+	// 				{
+	// 					MPI_Send(array,maxValue+1, MPI_INT, rank-power_level_minus, 0, MPI_COMM_WORLD);
+	// 				}
+	// 			}
+	// 		}
+	// 		lev++;
+	// 		power_level_minus = pow(2,lev-1);
+	// 		power_level = pow(2,lev);
+	// 	}
+	//
+	// free(remoteArray);
 
 	free( recvData );
-	free(array);
-
 
 	//
 	// Constructs the histogram in serial on rank 0. Can be used as part of a check that your parallel version works.
 	//
-	if( rank==0 )
+	if( rank==0)
 	{
+		// The final local array to reach rank 0 will have the final results
+
+		//
+		// Uncomment this when using point-to-point communication in a binary tree
+		//
 		// for( i=0; i<maxValue+1; i++ )
-		// 	printf("index %d: %d\n", i, ceva[i]);
+		// 	combinedHist[i] = array[i];
+		// free(array);
 
 		// Allocate memory for the check histogram, and then initialise it to zero.
 		int *checkHist = (int*) malloc( (maxValue+1)*sizeof(int) );
@@ -174,9 +205,9 @@ int main( int argc, char **argv )
 		for( i=0; i<dataSize; i++ )
 			if( image[i]>=0 ) checkHist[image[i]]++;
 
-		// Display the histgram.
-		// for( i=0; i<maxValue+1; i++ )
-		// 	printf( "Greyscale value %i:\tCount %i\t(check: %i)\n", i, combinedHist[i], checkHist[i] );
+		//Display the histgram.
+		for( i=0; i<maxValue+1; i++ )
+			printf( "Greyscale value %i:\tCount %i\t(check: %i)\n",i, combinedHist[i], checkHist[i] );
 		free( checkHist );
 	}
 
